@@ -13,7 +13,7 @@ from . import agents
 
 
 gym.register(
-    id="Template-Better-Escape-Maze-v0",
+    id="Better-Escape-Maze-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
