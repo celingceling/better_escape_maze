@@ -48,10 +48,10 @@ class BetterEscapeMazeSceneCfg(InteractiveSceneCfg):
     """Configuration for a ant scene."""
 
     # ground plane
-    ground = AssetBaseCfg(
-        prim_path="/World/ground",
-        spawn=sim_utils.GroundPlaneCfg(size=(100.0, 100.0)),
-    )
+    # ground = AssetBaseCfg(
+    #     prim_path="/World/ground",
+    #     spawn=sim_utils.GroundPlaneCfg(size=(100.0, 100.0)),
+    # )
 
     # robot
     robot: ArticulationCfg = ANT_CFG.replace(

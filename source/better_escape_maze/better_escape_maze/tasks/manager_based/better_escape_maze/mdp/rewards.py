@@ -15,9 +15,16 @@ if TYPE_CHECKING:
 def velocity_command_error_tanh(env: ManagerBasedRLEnv, std: float, command_name: str) -> torch.Tensor:
     """Reward position tracking with tanh kernel."""
     command = env.command_manager.get_command(command_name)
+    # # adapted from pos control from anymal example
     des_vel_b = command[:, :3]
-    distance = torch.norm(des_vel_b, dim=1)
-    return 1 - torch.tanh(distance / std)
+    # distance = torch.norm(des_vel_b, dim=1)
+    # return 1 - torch.tanh(distance / std)
+    
+    # gpt
+    actual_vel_b = env.scene["robot"].data.root_lin_vel_b[:, :3]
+    error = torch.norm(actual_vel_b - des_vel_b, dim=1)
+    return 1 - torch.tanh(error / std)
+
 
 
 def heading_command_error_abs(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
