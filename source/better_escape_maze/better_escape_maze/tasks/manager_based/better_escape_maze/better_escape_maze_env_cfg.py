@@ -23,7 +23,7 @@ from . import mdp
 # Pre-defined configs
 ##
 
-from isaaclab_assets.robots.cartpole import CARTPOLE_CFG  # isort:skip
+from isaaclab_assets.robots.ant import ANT_CFG  # isort:skip
 
 
 ##
