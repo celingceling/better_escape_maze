@@ -3,10 +3,10 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-""" references 
-C:\Users\LICF\IsaacLab\source\isaaclab_tasks\isaaclab_tasks\
-    manager_based\navigation\config\anymal_c\navigation_env_cfg.py
-    """
+# """ references 
+# C:\Users\LICF\IsaacLab\source\isaaclab_tasks\isaaclab_tasks\
+#     manager_based\navigation\config\anymal_c\navigation_env_cfg.py
+#     """
 
 import math
 
@@ -23,6 +23,7 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
 from isaaclab.terrains import TerrainImporterCfg
+from isaaclab.sensors import ContactSensorCfg
 
 from . import mdp # from init
 
@@ -32,13 +33,14 @@ from . import mdp # from init
 
 from isaaclab_assets.robots.ant import ANT_CFG  # isort:skip
 import isaaclab_tasks.manager_based.navigation.mdp as mdp
-from isaaclab_tasks.manager_based.classic.ant import ant_env_cfg
+# from isaaclab_tasks.manager_based.classic.ant.ant_env_cfg import AntEnvCfg
+from better_escape_maze.assets.ant_env_cfg_modified import AntEnvCfg
 
 ##
 # Scene definition
 ##
 
-LOW_LEVEL_ENV_CFG = ant_env_cfg()
+LOW_LEVEL_ENV_CFG = AntEnvCfg()
 # "C:\Users\LICF\IsaacLab\source\isaaclab_tasks\isaaclab_tasks\manager_based\classic\ant\ant_env_cfg.py"
 
 @configclass
@@ -52,8 +54,17 @@ class BetterEscapeMazeSceneCfg(InteractiveSceneCfg):
     )
 
     # robot
-    robot: ArticulationCfg = ANT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot") # replace path
-
+    robot: ArticulationCfg = ANT_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Robot",
+        spawn=ANT_CFG.spawn.replace( # spawn modifies PhysX and USD behavior
+            activate_contact_sensors=True,
+        ),
+        ) # replace path
+    
+    # contact forces
+    # add a contact sensor to every prim under Robot
+    contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
+    
     # lights
     dome_light = AssetBaseCfg(
         prim_path="/World/DomeLight",
@@ -64,14 +75,31 @@ class BetterEscapeMazeSceneCfg(InteractiveSceneCfg):
     maze_cfg: AssetBaseCfg = AssetBaseCfg(
         prim_path="/World/envs/env_.*/Maze",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=f"C:\Users\LICF\isaac_demo\better_escape_maze\better_escape_maze\source\maze.usd", # what is raw string
+            usd_path=r"C:\Users\LICF\isaac_demo\better_escape_maze\source\maze.usd", # what is raw string
             scale=(1.0,1.0,1.0),
         ),
         init_state=AssetBaseCfg.InitialStateCfg(
             pos=(0.0,0.0,0.0),
         )
     )
+    
+    terrain = TerrainImporterCfg(
+        prim_path="/World/ground",
+        terrain_type="plane",
+        collision_group=-1,
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            friction_combine_mode="average",
+            restitution_combine_mode="average",
+            static_friction=1.0,
+            dynamic_friction=1.0,
+            restitution=0.0,
+        ),
+        debug_vis=False,
+    )
 
+
+    
+    
 @configclass
 class EventCfg: # isaaclab_tasks.manager_based.navigation.config.anymal.navigation_env_cfg
     """Configuration for events."""
@@ -117,9 +145,9 @@ class ActionsCfg:
     """
     pre_trained_policy_action: mdp.PreTrainedPolicyActionCfg = mdp.PreTrainedPolicyActionCfg(
         asset_name="robot",
-        policy_path=f"source\better_escape_maze\better_escape_maze\tasks\manager_based\better_escape_maze\ant_policy.pt",
+        policy_path=r"source\better_escape_maze\better_escape_maze\tasks\manager_based\better_escape_maze\ant_policy.pt",
         low_level_decimation=4,
-        low_level_actions=LOW_LEVEL_ENV_CFG.actions.joint_pos,
+        low_level_actions=LOW_LEVEL_ENV_CFG.actions.joint_effort,
         low_level_observations=LOW_LEVEL_ENV_CFG.observations.policy,
     )
     
@@ -213,7 +241,10 @@ class TerminationsCfg:
 class BetterEscapeMazeEnvCfg(ManagerBasedRLEnvCfg):
     # Scene settings (inherit most from ant)
     # also referenced from polict_in_inference_isd.py
-    scene: SceneEntityCfg = LOW_LEVEL_ENV_CFG.scene
+    # scene: SceneEntityCfg = LOW_LEVEL_ENV_CFG.scene
+    
+    scene: BetterEscapeMazeSceneCfg = BetterEscapeMazeSceneCfg(num_envs=4096, env_spacing=2.5)
+    
     # # import maze
     # scene.terrain = TerrainImporterCfg(
     #     prim_path="/World/ground",
@@ -237,10 +268,10 @@ class BetterEscapeMazeEnvCfg(ManagerBasedRLEnvCfg):
         self.episode_length_s = self.commands.pose_command.resampling_time_range[1] # chagne to vel also what is this
         
         # what is this, do i need to add sensors to ant
-        if self.scene.height_scanner is not None:
-            self.scene.height_scanner.update_period = (
-                self.actions.pre_trained_policy_action.low_level_decimation * self.sim.dt
-            )
+        # if self.scene.height_scanner is not None:
+        #     self.scene.height_scanner.update_period = (
+        #         self.actions.pre_trained_policy_action.low_level_decimation * self.sim.dt
+        #     )
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
         
@@ -251,7 +282,7 @@ class BetterEscapeMazeEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.render_interval = LOW_LEVEL_ENV_CFG.decimation
         
         
-    class BetterEscapeMazeEnvCfg_PLAY(BetterEscapeMazeEnvCfg):
+    class BetterEscapeMazeEnvCfg_PLAY(ManagerBasedRLEnvCfg):
         def __post_init__(self) -> None:
             # post init of parent
             super().__post_init__()
