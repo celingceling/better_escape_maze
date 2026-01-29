@@ -22,6 +22,7 @@ from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
+from isaaclab.terrains import TerrainImporterCfg
 
 from . import mdp # from init
 
@@ -63,7 +64,7 @@ class BetterEscapeMazeSceneCfg(InteractiveSceneCfg):
     maze_cfg: AssetBaseCfg = AssetBaseCfg(
         prim_path="/World/envs/env_.*/Maze",
         spawn=sim_utils.UsdFileCfg(
-            usd_path=r"C:\Users\LICF\isaac_demo\better_escape_maze\better_escape_maze\source\maze.usd", # what is raw string
+            usd_path=f"C:\Users\LICF\isaac_demo\better_escape_maze\better_escape_maze\source\maze.usd", # what is raw string
             scale=(1.0,1.0,1.0),
         ),
         init_state=AssetBaseCfg.InitialStateCfg(
@@ -211,7 +212,15 @@ class TerminationsCfg:
 @configclass
 class BetterEscapeMazeEnvCfg(ManagerBasedRLEnvCfg):
     # Scene settings (inherit most from ant)
+    # also referenced from polict_in_inference_isd.py
     scene: SceneEntityCfg = LOW_LEVEL_ENV_CFG.scene
+    # # import maze
+    # scene.terrain = TerrainImporterCfg(
+    #     prim_path="/World/ground",
+    #     terrain_type="usd",
+    #     usd_path=f"C:\Users\LICF\isaac_demo\escape_maze\maze_spot.usd"
+    # )
+    
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     events: EventCfg = EventCfg()
