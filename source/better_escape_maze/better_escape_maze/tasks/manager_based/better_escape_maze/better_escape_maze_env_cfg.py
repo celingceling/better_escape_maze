@@ -27,6 +27,10 @@ from isaaclab.sensors import ContactSensorCfg
 
 from . import mdp # from init
 
+from .mdp import rewards
+
+
+
 ##
 # Pre-defined configs
 ##
@@ -126,6 +130,13 @@ class EventCfg: # isaaclab_tasks.manager_based.navigation.config.anymal.navigati
 # MDP settings
 ##
 
+@configclass
+class AntPolicyWithCommands(LOW_LEVEL_ENV_CFG.observations.policy.__class__):
+    velocity_commands = ObsTerm(
+        func=mdp.generated_commands,
+        params={"command_name": "velocity_command"},
+    )
+
 
 @configclass
 class ActionsCfg: 
@@ -168,7 +179,7 @@ class ObservationsCfg:
         # obs terms  contain information about obs function to call (obs = properties that go into a policy)
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel)
         projected_gravity = ObsTerm(func=mdp.projected_gravity)
-        velocity_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "velocity_command"})
+        velocity_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "velocity_command"})
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
@@ -185,16 +196,16 @@ class RewardsCfg:
     # early termination bad
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-400.0)
     
-    # track position
-    velocity_tracking = RewTerm(
-        func=mdp.velocity_command_error_tanh,
-        weight=0.5,
-        params={"std": 2.0, "command_name": "velocity_command"},
-    )
+    # # track position
+    # velocity_tracking = RewTerm(
+    #     func=rewards.velocity_command_error_tanh,
+    #     weight=0.5,
+    #     params={"std": 2.0, "command_name": "velocity_command"},
+    # )
     
     # track position lower std?
     velocity_tracking_fine_grained = RewTerm(
-        func=mdp.velocity_command_error_tanh,
+        func=rewards.velocity_command_error_tanh,
         weight=0.5,
         params={"std": 0.2, "command_name": "velocity_command"},
     )
@@ -212,7 +223,7 @@ class CommandsCfg: # might wanna change to velocity
 
     velocity_command = mdp.UniformVelocityCommandCfg(
         asset_name="robot",
-        simple_heading=False,
+        # simple_heading=False,
         resampling_time_range=(8.0, 8.0),
         debug_vis=True,
         heading_command = False,
