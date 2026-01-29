@@ -33,8 +33,8 @@ from . import mdp # from init
 
 from isaaclab_assets.robots.ant import ANT_CFG  # isort:skip
 import isaaclab_tasks.manager_based.navigation.mdp as mdp
-# from isaaclab_tasks.manager_based.classic.ant.ant_env_cfg import AntEnvCfg
-from better_escape_maze.assets.ant_env_cfg_modified import AntEnvCfg
+from isaaclab_tasks.manager_based.classic.ant.ant_env_cfg import AntEnvCfg
+# from better_escape_maze.assets.ant_env_cfg_modified import AntEnvCfg
 
 ##
 # Scene definition
@@ -161,14 +161,14 @@ class ObservationsCfg:
         Observations for policy group.
         other group is low level ant stuff
         
-        for this navigation one it's just base_lin_vel (3), gravity (1), pose_cmd (3?)
+        for this navigation one it's just base_lin_vel (3), gravity (1), velocity_cmd (3?)
         """
 
         # observation terms (order preserved)
         # obs terms  contain information about obs function to call (obs = properties that go into a policy)
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel)
         projected_gravity = ObsTerm(func=mdp.projected_gravity)
-        pose_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "pose_command"})
+        velocity_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "velocity_command"})
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
@@ -186,36 +186,41 @@ class RewardsCfg:
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-400.0)
     
     # track position
-    position_tracking = RewTerm(
-        func=mdp.position_command_error_tanh,
+    velocity_tracking = RewTerm(
+        func=mdp.velocity_command_error_tanh,
         weight=0.5,
-        params={"std": 2.0, "command_name": "pose_command"},
+        params={"std": 2.0, "command_name": "velocity_command"},
     )
     
     # track position lower std?
-    position_tracking_fine_grained = RewTerm(
-        func=mdp.position_command_error_tanh,
+    velocity_tracking_fine_grained = RewTerm(
+        func=mdp.velocity_command_error_tanh,
         weight=0.5,
-        params={"std": 0.2, "command_name": "pose_command"},
+        params={"std": 0.2, "command_name": "velocity_command"},
     )
     
-    # track heading
-    orientation_tracking = RewTerm(
-        func=mdp.heading_command_error_abs,
-        weight=-0.2,
-        params={"command_name": "pose_command"},
-    )
+    # # track heading # no heading control
+    # orientation_tracking = RewTerm(
+    #     func=mdp.heading_command_error_abs,
+    #     weight=-0.2,
+    #     params={"command_name": "velocity_command"},
+    # )
 
 @configclass
 class CommandsCfg: # might wanna change to velocity
     """Command terms for the MDP."""
 
-    pose_command = mdp.UniformPose2dCommandCfg(
+    velocity_command = mdp.UniformVelocityCommandCfg(
         asset_name="robot",
         simple_heading=False,
         resampling_time_range=(8.0, 8.0),
         debug_vis=True,
-        ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
+        heading_command = False,
+        ranges = mdp.UniformVelocityCommandCfg.Ranges(
+            lin_vel_x=(-1.5, 1.5),
+            lin_vel_y=(-1.5, 1.5),
+            ang_vel_z=(-2.0, 2.0),
+        )
     )
 
 @configclass
@@ -228,7 +233,15 @@ class TerminationsCfg:
     # (2) Hit a wall 
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
+        params={
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", 
+                body_names=['torso', 'front_left_leg', 
+                            'front_left_foot', 'front_right_leg', 
+                            'front_right_foot', 'left_back_leg', 
+                            'left_back_foot', 'right_back_leg', 
+                            'right_back_foot']), 
+            "threshold": 1.0},
     )
 
 
@@ -263,9 +276,12 @@ class BetterEscapeMazeEnvCfg(ManagerBasedRLEnvCfg):
     # Post initialization
     def __post_init__(self) -> None:
         """Post initialization."""
+        super().__post_init__()
+        
         # general settings
         self.decimation = LOW_LEVEL_ENV_CFG.decimation * 10 # incrase decimation because nav doesn't need that much
-        self.episode_length_s = self.commands.pose_command.resampling_time_range[1] # chagne to vel also what is this
+        self.episode_length_s = self.commands.velocity_command.resampling_time_range[1] # chagne to vel also what is this
+        self.sim.device = "cuda:0"   # or "cuda"
         
         # what is this, do i need to add sensors to ant
         # if self.scene.height_scanner is not None:
